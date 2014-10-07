@@ -218,8 +218,31 @@ sub approvals {
     return $self->_request( 'GET', $url );
 }
 
+sub customer_preferences {
+    my $self = shift;
+
+    my $url_string = $self->{api_url} . '/api/customer';
+    my $url        = URI->new($url_string);
+    return $self->_request( 'GET', $url );
+}
+
+sub cancel_order {
+    my ( $self, $orderline_ref ) = @_;
+    my $url_string = $self->{api_url} . "/api/orders/$orderline_ref";
+    my $url        = URI->new($url_string);
+    return $self->_request( 'DELETE', $url );
+}
+
+sub create_order {
+    my ( $self, $order_ref ) = @_;
+    my $xml;    # TBD generate from order_ref
+    my $url_string = $self->{api_url} . '/api/orders';
+    my $url        = URI->new($url_string);
+    return $self->_request( 'POST', $url, $xml );
+}
+
 sub _request {
-    my ( $self, $method, $url ) = @_;
+    my ( $self, $method, $url, $content ) = @_;
     if ( $self->{error} ) {    # clear an existing error
         delete $self->{error};
     }
@@ -231,6 +254,12 @@ sub _request {
         $req->header(
             'BLDSS-API-Authentication' => $self->{authentication_request} );
     }
+
+    # add content if specified
+    if ($content) {
+        $req->content($content);
+    }
+
     my $res = $self->{ua}->request($req);
     if ( $res->is_success ) {
         return $res->content;
