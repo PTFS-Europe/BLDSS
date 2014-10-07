@@ -15,7 +15,6 @@ Version 0.01
 
 our $VERSION = '0.01';
 
-
 =head1 SYNOPSIS
 
 Object to handle interaction with BLDSS via the api
@@ -156,6 +155,35 @@ sub match {
 }
 
 sub availability {
+    my ( $self, $uin, $opt ) = @_;
+    my $url_string = $self->{api_url} . '/api/availability';
+    my @param = ( 'AvailabilityRequest.uin', $uin );
+    if ($opt) {
+        if ( $opt->{includeprices} ) {
+            push @param, 'AvailabilityRequest.includePrices', 'true';
+        }
+        my %item_field = (
+            year          => 'AvailabilityRequest.Item.year',
+            volume        => 'AvailabilityRequest.Item.volume',
+            part          => 'AvailabilityRequest.Item.part',
+            issue         => 'AvailabilityRequest.Item.issue',
+            edition       => 'AvailabilityRequest.Item.edition',
+            season        => 'AvailabilityRequest.Item.season',
+            month         => 'AvailabilityRequest.Item.month',
+            day           => 'AvailabilityRequest.Item.day',
+            special_issue => 'AvailabilityRequest.Item.specialIssue',
+        );
+        foreach my $key ( keys %item_field ) {
+            if ( $opt->{$key} ) {
+                push @param, $item_field{$key}, $opt->{$key};
+
+            }
+        }
+    }
+
+    my $url = URI->new($url_string);
+    $url->query_form( \@param );
+    return $self->_request( 'GET', $url );
 }
 
 sub _request {

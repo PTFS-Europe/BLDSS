@@ -13,10 +13,24 @@ my $api = BLDSS->new();
 
 #my $resp = $api->simple_search('slovenia');
 my $resp = $api->search('European AND political');
+
 #my $resp = $api->search('European AND political', { start_rec => 2});
 
 if ($resp) {
-    my $xml = XML::Twig->new(pretty_print => 'indented');
+    my $xml = XML::Twig->new( pretty_print => 'indented' );
+    $xml->parse($resp);
+    $xml->print;
+}
+else {
+    say $api->error;
+}
+
+my $uin = 'BLL01013337063';
+
+$resp = $api->availability( $uin, { year => 2005 } );
+
+if ($resp) {
+    my $xml = XML::Twig->new( pretty_print => 'indented' );
     $xml->parse($resp);
     $xml->print;
 }
