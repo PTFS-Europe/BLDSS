@@ -195,6 +195,10 @@ sub _request {
     my $req = HTTP::Request->new( $method => $url );
 
     # If auth add as header
+    if ( $self->{authentication_request} ) {
+        $req->header(
+            'BLDSS-API-Authentication' => $self->{authentication_request} );
+    }
     my $res = $self->{ua}->request($req);
     if ( $res->is_success ) {
         return $res->content;
