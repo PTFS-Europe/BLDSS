@@ -2,6 +2,9 @@
 use strict;
 use warnings;
 use feature qw( say );
+use FindBin qw($Bin);
+use lib "$Bin/../lib";
+
 use XML::Twig;
 
 use BLDSS;
