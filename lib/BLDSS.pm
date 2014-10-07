@@ -156,7 +156,6 @@ sub match {
 
 sub availability {
     my ( $self, $uin, $opt ) = @_;
-    my $url_string = $self->{api_url} . '/api/availability';
     my @param = ( 'AvailabilityRequest.uin', $uin );
     if ($opt) {
         if ( $opt->{includeprices} ) {
@@ -181,8 +180,41 @@ sub availability {
         }
     }
 
-    my $url = URI->new($url_string);
+    my $url_string = $self->{api_url} . '/api/availability';
+    my $url        = URI->new($url_string);
     $url->query_form( \@param );
+    return $self->_request( 'GET', $url );
+}
+
+sub approvals {
+    my ( $self, $opt ) = @_;
+    my @param;
+    if ($opt) {
+        if ( $opt->{start} ) {
+            push @param, 'ApprovalsRequest.startIndex', $opt->{start};
+        }
+        if ( $opt->{max_records} ) {
+            push @param, 'ApprovalsRequest.maxRecords', $opt->{max_records};
+        }
+        if ( $opt->{filter} ) {
+            push @param, 'ApprovalsRequest.filter', $opt->{filter};
+        }
+        if ( $opt->{format} ) {
+            push @param, 'ApprovalsRequest.format', $opt->{format};
+        }
+        if ( $opt->{speed} ) {
+            push @param, 'ApprovalsRequest.speed', $opt->{speed};
+        }
+        if ( $opt->{order} ) {
+            push @param, 'ApprovalsRequest.sortOrder', $opt->{order};
+        }
+    }
+
+    my $url_string = $self->{api_url} . '/api/approvals';
+    my $url        = URI->new($url_string);
+    if (@param) {
+        $url->query_form( \@param );
+    }
     return $self->_request( 'GET', $url );
 }
 
