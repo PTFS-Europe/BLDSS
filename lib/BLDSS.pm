@@ -353,6 +353,28 @@ sub prices {
     return $self->_request( 'GET', $url );
 }
 
+sub reference {
+    my ($self, $reference_type) = @_;
+    #TBD perlvars top camel case ??
+    my %valid_reference_calls = (
+        costTypes => 1,
+        currencies => 1,
+        deliveryModifiers => 1,
+        formats => 1,
+        problemClassifications => 1,
+        problemTypes => 1,
+        quality => 1,
+        services => 1,
+        speeds => 1,
+    );
+    if (!exists $valid_reference_calls{$reference_type} ) {
+        return;
+    }
+    my $url_string = $self->{api_url} . "/reference/$reference_type";
+    my $url        = URI->new($url_string);
+    return $self->_request( 'GET', $url );
+}
+
 sub _request {
     my ( $self, $method, $url, $content ) = @_;
     if ( $self->{error} ) {    # clear an existing error
