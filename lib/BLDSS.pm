@@ -41,8 +41,9 @@ use XML::LibXML;
 sub new {
     my $class = shift;
     my $self  = {
-        api_url => 'http://apitest.bldss.bl.uk',
-        ua      => LWP::UserAgent->new,
+        api_url     => 'http://apitest.bldss.bl.uk',
+        ua          => LWP::UserAgent->new,
+        application => 'KohaTestILL',
     };
 
     # authentication header will require
@@ -354,24 +355,61 @@ sub prices {
 }
 
 sub reference {
-    my ($self, $reference_type) = @_;
+    my ( $self, $reference_type ) = @_;
+
     #TBD perlvars top camel case ??
     my %valid_reference_calls = (
-        costTypes => 1,
-        currencies => 1,
-        deliveryModifiers => 1,
-        formats => 1,
+        costTypes              => 1,
+        currencies             => 1,
+        deliveryModifiers      => 1,
+        formats                => 1,
         problemClassifications => 1,
-        problemTypes => 1,
-        quality => 1,
-        services => 1,
-        speeds => 1,
+        problemTypes           => 1,
+        quality                => 1,
+        services               => 1,
+        speeds                 => 1,
     );
-    if (!exists $valid_reference_calls{$reference_type} ) {
+    if ( !exists $valid_reference_calls{$reference_type} ) {
         return;
     }
     my $url_string = $self->{api_url} . "/reference/$reference_type";
     my $url        = URI->new($url_string);
+    return $self->_request( 'GET', $url );
+}
+
+sub rejected_requests {
+    my ( $self, $options ) = @_;
+    my $url_string = $self->{api_url} . '/reference/rejectedRequests';
+    my $url        = URI->new($url_string);
+    my @opt;
+    if ( exists $options->{start} ) {
+        push @opt, 'RejectedRequestsRequest.startIndex', $options->{start};
+    }
+    if ( exists $options->{max_records} ) {
+        push @opt, 'RejectedRequestsRequest.maxRecords',
+          $options->{max_records};
+    }
+    if (@opt) {
+        $url->query_form( \@opt );
+    }
+    return $self->_request( 'GET', $url );
+}
+
+sub estimated_despatch_date {
+    my ( $self, $options ) = @_;
+    my $url_string = $self->{api_url} . '/utility/estimatedDespatch';
+    my $url        = URI->new($url_string);
+    my @opt;
+    if ( exists $options->{availability_date} ) {
+        push @opt, 'EstimatedDespatchRequest.availabilityDate',
+          $options->{availability_date};
+    }
+    if ( exists $options->{speed} ) {
+        push @opt, 'EstimatedDespatchRequest.speed', $options->{speed};
+    }
+    if (@opt) {
+        $url->query_form( \@opt );
+    }
     return $self->_request( 'GET', $url );
 }
 
