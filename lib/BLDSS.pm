@@ -36,6 +36,7 @@ Object to handle interaction with BLDSS via the api
 
 use LWP::UserAgent;
 use URI;
+use XML::LibXML;
 
 sub new {
     my $class = shift;
@@ -239,6 +240,101 @@ sub create_order {
     my $url_string = $self->{api_url} . '/api/orders';
     my $url        = URI->new($url_string);
     return $self->_request( 'POST', $url, $xml );
+}
+
+sub order {
+    my ( $self, $order_ref ) = @_;
+
+    # order_ref can be orderline ref or request id
+    my $url_string = $self->{api_url} . "/api/orders/$order_ref";
+    my $url        = URI->new($url_string);
+    return $self->_request( 'GET', $url );
+}
+
+sub orders {
+    my ( $self, $selection ) = @_;
+
+    # return multiple orders based on criteria in selection
+    #
+    my $url_string = $self->{api_url} . '/api/orders';
+    my $url        = URI->new($url_string);
+    my %map_sel    = (
+        start_date  => 'OrdersRequest.startDate',
+        end_date    => 'OrdersRequest.endDate',
+        start_index => 'OrdersRequest.startIndex',
+        max_records => 'OrdersRequest.maxRecords',
+        sort_order  => 'OrdersRequest.sortOrder',
+        filter      => 'ApprovalsRequest.filter',
+        format      => 'ApprovalsRequest.format',
+        speed       => 'ApprovalsRequest.speed',
+    );
+    my @param;
+    if ( exists $selection->{events} ) {
+        push @param, 'OrdersRequest.eventsOnly', 'true';
+        delete $selection->{events};
+    }
+
+    if ( exists $selection->{orders} ) {
+        push @param, 'OrdersRequest.ordersOnly', 'true';
+        delete $selection->{orders};
+    }
+    if ( exists $selection->{requests} ) {
+        push @param, 'OrdersRequest.requestsOnly', 'true';
+        delete $selection->{orders};
+    }
+    if ( exists $selection->{open_only} ) {
+        push @param, 'OrdersRequest.openOnly', 'true';
+        delete $selection->{open_only};
+    }
+    foreach my $key ( keys %{$selection} ) {
+        if ( exists $map_sel{$key} ) {
+            push @param, $map_sel{$key}, $selection->{$key};
+        }
+    }
+
+    $url->query_form( \@param );
+    return $self->_request( 'GET', $url );
+}
+
+sub renew_loan {
+    my ( $self, $orderline, $requestor ) = @_;
+    my $url_string = $self->{api_url} . '/api/orders/renewLoan';
+    my $url        = URI->new($url_string);
+
+    my $doc               = XML::LibXML::Document->new();
+    my $request           = $doc->createElement('RenewalRequest');
+    my $orderline_element = $doc->createElement('orderline');
+    $orderline_element->appendTextNode($orderline);
+    $request->appendChild($orderline_element);
+    if ($requestor) {
+        my $element = $doc->createElement('requestor');
+        $element->appendTextNode($requestor);
+        $request->appendChild($element);
+    }
+    my $xml = $request->toString();
+    return $self->_request( 'PUT', $url, $xml );
+}
+
+sub reportProblem {
+    my ( $self, $param ) = @_;
+    my $url_string = $self->{api_url} . '/api/orders/renewLoan';
+    my $url        = URI->new($url_string);
+
+    my $doc     = XML::LibXML::Document->new();
+    my $request = $doc->createElement('ReportProblemRequest');
+    foreach my $name (qw( requestId type email requestor text)) {
+        my $element = $doc->createElement($name);
+        $element->appendTextNode( $param->{$name} );
+        $request->appendChild($element);
+    }
+    if ( exists $param->{phone} ) {
+        my $element = $doc->createElement('phone');
+        $element->appendTextNode( $param->{phone} );
+        $request->appendChild($element);
+    }
+
+    my $xml = $request->toString();
+    return $self->_request( 'PUT', $url, $xml );
 }
 
 sub _request {
