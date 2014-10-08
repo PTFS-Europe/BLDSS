@@ -337,6 +337,22 @@ sub reportProblem {
     return $self->_request( 'PUT', $url, $xml );
 }
 
+sub prices {
+    my ( $self, $param ) = @_;
+    my $url_string = $self->{api_url} . '/api/prices';
+    my $url        = URI->new($url_string);
+    my @optional_param;
+    foreach my $opt (qw( region service format currency )) {
+        if ( exists $param->{$opt} ) {
+            push @optional_param, "PricesRequest.$opt", $param->{$opt};
+        }
+    }
+    if (@optional_param) {
+        $url->query_form( \@optional_param );
+    }
+    return $self->_request( 'GET', $url );
+}
+
 sub _request {
     my ( $self, $method, $url, $content ) = @_;
     if ( $self->{error} ) {    # clear an existing error
