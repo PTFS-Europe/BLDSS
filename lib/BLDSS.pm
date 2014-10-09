@@ -237,7 +237,7 @@ sub cancel_order {
 
 sub create_order {
     my ( $self, $order_ref ) = @_;
-    my $xml;    # TBD generate from order_ref
+    my $xml        = _encode_order($order_ref);
     my $url_string = $self->{api_url} . '/api/orders';
     my $url        = URI->new($url_string);
     return $self->_request( 'POST', $url, $xml );
@@ -357,7 +357,7 @@ sub prices {
 sub reference {
     my ( $self, $reference_type ) = @_;
 
-    #TBD perlvars top camel case ??
+    #TBD perlvars to camel case ??
     my %valid_reference_calls = (
         costTypes              => 1,
         currencies             => 1,
@@ -413,6 +413,12 @@ sub estimated_despatch_date {
     return $self->_request( 'GET', $url );
 }
 
+sub error {
+    my $self = shift;
+
+    return $self->{error};
+}
+
 sub _request {
     my ( $self, $method, $url, $content ) = @_;
     if ( $self->{error} ) {    # clear an existing error
@@ -440,10 +446,150 @@ sub _request {
     return;
 }
 
-sub error {
-    my $self = shift;
+sub _encode_order {
+    my $ref     = shift;
+    my $doc     = XML::LibXML::Document->new();
+    my $request = $doc->createElement('NewOrderRequest');
+    my $element = $doc->createElement('type');
+    if ( $ref->{type} =~ m/^S/i ) {    # Synchronous or s allowed
+        $element->appendTextNode('S');
+    }
+    else {
+        # assuming Asynchronous
+        $element->appendTextNode('A');
+    }
+    $request->appendChild($element);
 
-    return $self->{error};
+    # Optional Parameters
+    for my $name (
+        qw( requestor cusyomerReference payCopyright allowWaitingList referrel))
+    {
+        if ( $ref->{$name} ) {
+            $element = $doc->createElement($name);
+            $element->appendTextNode( $ref->{$name} );
+            $request->appendChild($element);
+        }
+    }
+
+    $request->appendChild( _add_delivery_element( $doc, $ref->{Delivery} ) );
+
+    $request->appendChild( _add_item_element( $doc, $ref->{Item} ) );
+
+    $request->appendChild( _add_service_element( $doc, $ref->{service} ) );
+
+    return $request->toString();
+}
+
+sub _add_service_element {
+    my ( $doc, $s ) = @_;
+    my $s_element = $doc->createElement('Service');
+    my @service_elements =
+      qw( service format speed quality quantity maxCost exceedMaxCost needByDate exceedDeliveryTime);
+    foreach my $name (@service_elements) {
+        if ( exists $s->{$name} ) {
+            my $element = $doc->createElement($name);
+            $element->appendTextNode( $s->{$name} );
+            $s_element->appendChild($element);
+
+        }
+    }
+
+    return $s_element;
+}
+
+sub _add_delivery_element {
+    my ( $doc, $d ) = @_;
+    my $d_element = $doc->createElement('Delivery');
+    if ( exists $d->{email} ) {
+        my $element = $doc->createElement('email');
+        $element->appendTextNode( $d->{email} );
+        $d_element->appendChild($element);
+
+    }
+
+    my $address = $doc->createElement('Address');
+    my @address_fields =
+      qw( Department AddressLine1 AddressLine2 AddressLine3 TownOrCity CountyOrState ProvinceOrRegion PostOrZipCode Country );
+    my $a = $d->{Address};
+    for my $name (@address_fields) {
+        if ( exists $a->{$name} ) {
+            my $element = $doc->createElement($name);
+            $element->appendTextNode( $a->{$name} );
+            $address->appendChild($element);
+
+        }
+    }
+    $d_element->appendChild($address);
+
+    #   Address
+    my @names = qw( directDelivery directDownload callbackUrl);
+    for my $name (@names) {
+        if ( exists $d->{$name} ) {
+            my $element = $doc->createElement($name);
+            $element->appendTextNode( $d->{$name} );
+            $d_element->appendChild($element);
+
+        }
+    }
+
+    return $d_element;
+}
+
+sub _add_item_element {
+    my ( $doc, $item ) = @_;
+    my $i_element         = $doc->createElement('Item');
+    my @toplevel_elements = qw( uin type );
+    foreach my $name (@toplevel_elements) {
+        if ( exists $item->{$name} ) {
+            my $element = $doc->createElement($name);
+            $element->appendTextNode( $item->{$name} );
+            $i_element->appendChild($element);
+
+        }
+    }
+
+    my @titleLevel_elements = qw(
+      title author ISBN ISSN ISMN shelfmark publisher conferenceVenue conferenceDate thesisUniversity thesisDissertation mapScale
+    );
+    my $level = $doc->createElement('titleLevel');
+    foreach my $name (@titleLevel_elements) {
+        if ( exists $item->{titleLevel}->{$name} ) {
+            my $element = $doc->createElement($name);
+            $element->appendTextNode( $item->{titleLevel}->{$name} );
+            $level->appendChild($element);
+
+        }
+    }
+    $i_element->appendChild($level);
+
+    my @itemLevel_elements = qw(
+      year volume part issue edition season month day specialIssue
+    );
+
+    $level = $doc->createElement('itemLevel');
+    foreach my $name (@itemLevel_elements) {
+        if ( exists $item->{itemLevel}->{$name} ) {
+            my $element = $doc->createElement($name);
+            $element->appendTextNode( $item->{itemLevel}->{$name} );
+            $level->appendChild($element);
+
+        }
+    }
+    $i_element->appendChild($level);
+
+    my @itemOfInterestLevel_elements = qw( title pages author );
+    $level = $doc->createElement('itemOfInterestLevel');
+    foreach my $name (@itemOfInterestLevel_elements) {
+        if ( exists $item->{itemOfInterestLevel}->{$name} ) {
+            my $element = $doc->createElement($name);
+            $element->appendTextNode( $item->{itemOfInterestLevel}->{$name} );
+            $level->appendChild($element);
+
+        }
+    }
+    $i_element->appendChild($level);
+
+    return $i_element;
 }
 
 1;
