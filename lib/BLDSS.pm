@@ -61,10 +61,10 @@ sub search {
     my ( $self, $search_str, $opt ) = @_;
 
     # search string can use AND OR and brackets
-    my $url_string = $self->{api_url} . "/api/search/$search_str";
+    my $url_string = $self->{api_url} . '/api/search/';
     my $url        = URI->new($url_string);
+    my @key_pairs = ( 'id', $search_str);
     if ( ref $opt eq 'HASH' ) {
-        my @key_pairs;
         if ( exists $opt->{max_results} ) {
             push @key_pairs, 'SearchRequest.maxResults', $opt->{max_results};
         }
@@ -92,10 +92,8 @@ sub search {
         if ( exists $opt->{general} ) {
             push @key_pairs, 'SearchRequest.Advanced.general', $opt->{general};
         }
-        if (@key_pairs) {
-            $url->query_form( \@key_pairs );
-        }
     }
+    $url->query_form( \@key_pairs );
     return $self->_request( 'GET', $url );
 }
 
@@ -246,9 +244,11 @@ sub create_order {
 sub order {
     my ( $self, $order_ref ) = @_;
 
+    my $query_vals = [ 'id', $order_ref ];
     # order_ref can be orderline ref or request id
     my $url_string = $self->{api_url} . "/api/orders/$order_ref";
     my $url        = URI->new($url_string);
+    $url->query_form( $query_vals );
     return $self->_request( 'GET', $url );
 }
 
