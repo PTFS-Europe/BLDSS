@@ -473,6 +473,9 @@ sub _authentication_header {
     }
     my %p_hash = @parameters;
     @parameters = map { "$_=$p_hash{$_}" } keys %p_hash;
+    # This is supposed to be required to use normal uri encoding
+    # but example use normal and omit this
+    push @parameters, 'override_encoding_method';
     my $p_string         = join '&', sort { lc($a) cmp lc($b) } @parameters;
     my $parameter_string = uri_escape($p_string);
     my $request_string   = join '&', $method, $path, $parameter_string;
