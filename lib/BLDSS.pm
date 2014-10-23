@@ -36,7 +36,14 @@ Object to handle interaction with BLDSS via the api
 
 use LWP::UserAgent;
 use URI;
+use URI::Escape;
 use XML::LibXML;
+use Digest::HMAC_SHA1;
+use MIME::Base64;
+
+use BLDSS::Config;
+
+my $nonce_string_mask = 's' x 16;
 
 sub new {
     my $class = shift;
@@ -44,7 +51,9 @@ sub new {
         api_url     => 'http://apitest.bldss.bl.uk',
         ua          => LWP::UserAgent->new,
         application => 'KohaTestILL',
+        config      => BLDSS::Config->new,
     };
+    $self->{hashing_key} = 'values from config';
 
     # authentication header will require
     # api_application
@@ -63,7 +72,7 @@ sub search {
     # search string can use AND OR and brackets
     my $url_string = $self->{api_url} . '/api/search/';
     my $url        = URI->new($url_string);
-    my @key_pairs = ( 'id', $search_str);
+    my @key_pairs  = ( 'id', $search_str );
     if ( ref $opt eq 'HASH' ) {
         if ( exists $opt->{max_results} ) {
             push @key_pairs, 'SearchRequest.maxResults', $opt->{max_results};
@@ -245,10 +254,11 @@ sub order {
     my ( $self, $order_ref ) = @_;
 
     my $query_vals = [ 'id', $order_ref ];
+
     # order_ref can be orderline ref or request id
     my $url_string = $self->{api_url} . "/api/orders/$order_ref";
     my $url        = URI->new($url_string);
-    $url->query_form( $query_vals );
+    $url->query_form($query_vals);
     return $self->_request( 'GET', $url );
 }
 
@@ -429,8 +439,9 @@ sub _request {
 
     # If auth add as header
     if ( $self->{authentication_request} ) {
-        $req->header(
-            'BLDSS-API-Authentication' => $self->{authentication_request} );
+        my $authentication_request =
+          $self->_authentication_header( $method, $url, $content );
+        $req->header( 'BLDSS-API-Authentication' => $authentication_request );
     }
 
     # add content if specified
@@ -444,6 +455,37 @@ sub _request {
     }
     $self->{error} = $res->status_line;
     return;
+}
+
+sub _authentication_header {
+    my ( $self, $method, $uri, $request_body ) = @_;
+    my $nonce_string = random_string($nonce_string_mask);
+    my $path         = uri_escape( $uri->path );
+    my @parameters   = $uri->query_form();
+    my $t            = time();
+    push @parameters, 'api_application', $self->{application},
+      'api_key',          $self->{config}->customer_account_id,
+      'request_time',     $t,
+      'nonce',            $nonce_string,
+      'signature_method', 'HMAC-SHA1';
+    if ($request_body) {
+        push @parameters, 'request', $request_body;
+    }
+    my %p_hash = @parameters;
+    @parameters = map { "$_=$p_hash{$_}" } keys %p_hash;
+    my $p_string         = join '&', sort { lc($a) cmp lc($b) } @parameters;
+    my $parameter_string = uri_escape($p_string);
+    my $request_string   = join '&', $method, $path, $parameter_string;
+    my $hmac             = Digest::HMAC_SHA1->new( $self->{hashing_key} );
+    $hmac->add($request_string);
+    my $digest = encode_base64( $hmac->digest );
+
+#        push @parameters, 'override_encoding_method';    # use % encoding not +
+    my $authorisation_value = _get_authorisation_value( $method, $uri->path, );
+    push @parameters, "authorisation=$authorisation_value";
+    my $authentication_request = join ',', @parameters;
+
+    return $authentication_request;
 }
 
 sub _encode_order {
