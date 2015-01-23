@@ -382,6 +382,9 @@ sub reference {
     if ( !exists $valid_reference_calls{$reference_type} ) {
         return;
     }
+    # reference lookups are returning 404
+    return;
+    #ZZ
     my $url_string = $self->{api_url} . "/reference/$reference_type";
     my $url        = URI->new($url_string);
     return $self->_request( 'GET', $url );
