@@ -80,4 +80,39 @@ my @sortedResult = sort { lc($a) cmp lc($b) } split(/,/, "api_application=BLAPI8
 
 is( @sortedHeader, @sortedResult, "_authentication_header, Complete Header" );
 
+# With Propagated Config
+my ( $api_key, $api_key_auth, $api_application, $api_application_auth )
+    = qw( 1234 test 5678 tset );
+
+$api_obj = $class->new(
+    {
+        api_key              => $api_key,
+        api_key_auth         => $api_key_auth,
+        api_application      => $api_application,
+        api_application_auth => $api_application_auth
+    }
+);
+
+is(
+    $api_obj->_authentication_header(
+        {
+            method => "GET",
+            uri    => URI->new($api_obj->{api_url} . '/api/prices'),
+            return => "parameter_string",
+            nonce  => "dgkjzPxUElpGmWhQ",
+            time   => "1424880494",
+        }
+    ),
+    join(
+        "&",
+        "api_application=" . $api_application,
+        "api_key=" . $api_key,
+        "nonce=dgkjzPxUElpGmWhQ",
+        "override_encoding_method=on",
+        "request_time=1424880494",
+        "signature_method=HMAC-SHA1",
+    ),
+    "_authentication_header, propagated input, parameter string"
+);
+
 done_testing;
