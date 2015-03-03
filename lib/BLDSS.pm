@@ -35,6 +35,7 @@ Object to handle interaction with BLDSS via the api
 =cut
 
 use LWP::UserAgent;
+use String::Random;
 use URI;
 use URI::Escape;
 use XML::LibXML;
@@ -50,18 +51,9 @@ sub new {
     my $self  = {
         api_url     => 'http://apitest.bldss.bl.uk',
         ua          => LWP::UserAgent->new,
-        application => 'KohaTestILL',
         config      => BLDSS::Config->new,
     };
-    $self->{hashing_key} = 'values from config';
 
-    # authentication header will require
-    # api_application
-    # api_key
-    # request_time = time(); recalc per request
-    # nonce
-    # signature_method=HMAC-SHA1
-    # authorisation
     bless $self, $class;
     return $self;
 }
@@ -443,7 +435,9 @@ sub _request {
     # If auth add as header
     if ( $self->{authentication_request} ) {
         my $authentication_request =
-          $self->_authentication_header( $method, $url, $content );
+            $self->_authentication_header(
+                { method => $method, uri => $url, request_body => $content }
+            );
         $req->header( 'BLDSS-API-Authentication' => $authentication_request );
     }
 
@@ -461,34 +455,41 @@ sub _request {
 }
 
 sub _authentication_header {
-    my ( $self, $method, $uri, $request_body ) = @_;
-    my $nonce_string = random_string($nonce_string_mask);
-    my $path         = uri_escape( $uri->path );
-    my @parameters   = $uri->query_form();
-    my $t            = time();
-    push @parameters, 'api_application', $self->{application},
-      'api_key',          $self->{config}->customer_account_id,
-      'request_time',     $t,
+    my ( $self, $params ) = @_;
+    my $request_body = $params->{request_body};
+    my $method       = $params->{method};
+    my $uri          = $params->{uri};
+    my $return       = $params->{return} || "";
+    my $t            = $params->{time} || time();
+    my $nonce_string = $params->{nonce}
+        || String::Random->new->randpattern($nonce_string_mask);
+
+    my $path         = $uri->path;
+    my @parameters   = $uri->query_form;
+
+    push @parameters, 'api_application', $self->{config}->api_application,
+      'api_key',          $self->{config}->api_key,
       'nonce',            $nonce_string,
+      'override_encoding_method', "on",
+      'request_time',     $t,
       'signature_method', 'HMAC-SHA1';
     if ($request_body) {
         push @parameters, 'request', $request_body;
     }
     my %p_hash = @parameters;
     @parameters = map { "$_=$p_hash{$_}" } keys %p_hash;
-    # This is supposed to be required to use normal uri encoding
-    # but example use normal and omit this
-    push @parameters, 'override_encoding_method';
-    my $p_string         = join '&', sort { lc($a) cmp lc($b) } @parameters;
-    my $parameter_string = uri_escape($p_string);
-    my $request_string   = join '&', $method, $path, $parameter_string;
-    my $hmac             = Digest::HMAC_SHA1->new( $self->{hashing_key} );
-    $hmac->add($request_string);
-    my $digest = encode_base64( $hmac->digest );
 
-#        push @parameters, 'override_encoding_method';    # use % encoding not +
-    my $authorisation_value = _get_authorisation_value( $method, $uri->path, );
-    push @parameters, "authorisation=$authorisation_value";
+    my $parameter_string = join '&', sort { lc($a) cmp lc($b) } @parameters;
+    return $parameter_string if ( $return eq "parameter_string" );
+    my $request_string   = join '&', $method, uri_escape($path),
+        uri_escape($parameter_string);
+    return $request_string if ( $return eq "request_string" );
+    my $hmac             = Digest::HMAC_SHA1->new( $self->{config}->hashing_key );
+    $hmac->add($request_string);
+    my $digest = encode_base64( $hmac->digest, "" );
+    return $digest if ( $return eq "authorisation_string" );
+
+    push @parameters, "authorisation=$digest";
     my $authentication_request = join ',', @parameters;
 
     return $authentication_request;
