@@ -95,7 +95,7 @@ sub search {
         }
     }
     $url->query_form( \@key_pairs );
-    return $self->_request( 'GET', $url );
+    return $self->_request( { method => 'GET', url => $url } );
 }
 
 sub match {
@@ -152,7 +152,7 @@ sub match {
     }
 
     $url->query_form( \@key_pairs );
-    return $self->_request( 'GET', $url );
+    return $self->_request( { method => 'GET', url => $url } );
 }
 
 sub availability {
@@ -184,7 +184,7 @@ sub availability {
     my $url_string = $self->{api_url} . '/api/availability';
     my $url        = URI->new($url_string);
     $url->query_form( \@param );
-    return $self->_request( 'GET', $url );
+    return $self->_request( { method => 'GET', url => $url } );
 }
 
 sub approvals {
@@ -216,7 +216,7 @@ sub approvals {
     if (@param) {
         $url->query_form( \@param );
     }
-    return $self->_request( 'GET', $url );
+    return $self->_request( { method => 'GET', url => $url } );
 }
 
 sub customer_preferences {
@@ -224,14 +224,14 @@ sub customer_preferences {
 
     my $url_string = $self->{api_url} . '/api/customer';
     my $url        = URI->new($url_string);
-    return $self->_request( 'GET', $url );
+    return $self->_request( { method => 'GET', url => $url, auth => 1 } );
 }
 
 sub cancel_order {
     my ( $self, $orderline_ref ) = @_;
     my $url_string = $self->{api_url} . "/api/orders/$orderline_ref";
     my $url        = URI->new($url_string);
-    return $self->_request( 'DELETE', $url );
+    return $self->_request( { method => 'DELETE', url => $url, auth => 1 } );
 }
 
 sub create_order {
@@ -239,7 +239,7 @@ sub create_order {
     my $xml        = _encode_order($order_ref);
     my $url_string = $self->{api_url} . '/api/orders';
     my $url        = URI->new($url_string);
-    return $self->_request( 'POST', $url, $xml );
+    return $self->_request( { method => 'POST', url => $url, content => $xml, auth => 1 } );
 }
 
 sub order {
@@ -251,7 +251,7 @@ sub order {
     my $url_string = $self->{api_url} . "/api/orders/$order_ref";
     my $url        = URI->new($url_string);
     $url->query_form($query_vals);
-    return $self->_request( 'GET', $url );
+    return $self->_request( { method => 'GET', url => $url, auth => 1 } );
 }
 
 sub orders {
@@ -296,7 +296,7 @@ sub orders {
     }
 
     $url->query_form( \@param );
-    return $self->_request( 'GET', $url );
+    return $self->_request( { method => 'GET', url => $url, auth => 1 } );
 }
 
 sub renew_loan {
@@ -315,7 +315,7 @@ sub renew_loan {
         $request->appendChild($element);
     }
     my $xml = $request->toString();
-    return $self->_request( 'PUT', $url, $xml );
+    return $self->_request( { method => 'PUT', url => $url, content => $xml, auth => 1 } );
 }
 
 sub reportProblem {
@@ -337,7 +337,7 @@ sub reportProblem {
     }
 
     my $xml = $request->toString();
-    return $self->_request( 'PUT', $url, $xml );
+    return $self->_request( { method => 'PUT', url => $url, content => $xml, auth => 1 } );
 }
 
 sub prices {
@@ -353,7 +353,8 @@ sub prices {
     if (@optional_param) {
         $url->query_form( \@optional_param );
     }
-    return $self->_request( 'GET', $url );
+    # optional auth, once working.
+    return $self->_request( { method => 'GET', url => $url } );
 }
 
 sub reference {
@@ -379,7 +380,7 @@ sub reference {
     #ZZ
     my $url_string = $self->{api_url} . "/reference/$reference_type";
     my $url        = URI->new($url_string);
-    return $self->_request( 'GET', $url );
+    return $self->_request( { method => 'GET', url => $url } );
 }
 
 sub rejected_requests {
@@ -397,7 +398,7 @@ sub rejected_requests {
     if (@opt) {
         $url->query_form( \@opt );
     }
-    return $self->_request( 'GET', $url );
+    return $self->_request( { method => 'GET', url => $url, auth => 1 } );
 }
 
 sub estimated_despatch_date {
@@ -415,7 +416,7 @@ sub estimated_despatch_date {
     if (@opt) {
         $url->query_form( \@opt );
     }
-    return $self->_request( 'GET', $url );
+    return $self->_request( { method => 'GET', url => $url } );
 }
 
 sub error {
@@ -425,7 +426,11 @@ sub error {
 }
 
 sub _request {
-    my ( $self, $method, $url, $content ) = @_;
+    my ( $self, $param ) = @_;
+    my $method  = $param->{method};
+    my $url     = $param->{url};
+    my $content = $param->{content};
+    my $auth    = $param->{auth};
     if ( $self->{error} ) {    # clear an existing error
         delete $self->{error};
     }
@@ -433,7 +438,7 @@ sub _request {
     my $req = HTTP::Request->new( $method => $url );
 
     # If auth add as header
-    if ( $self->{authentication_request} ) {
+    if ( $auth ) {
         my $authentication_request =
             $self->_authentication_header(
                 { method => $method, uri => $url, request_body => $content }
@@ -460,7 +465,7 @@ sub _authentication_header {
     my $method       = $params->{method};
     my $uri          = $params->{uri};
     my $return       = $params->{return} || "";
-    my $t            = $params->{time} || time();
+    my $t            = $params->{time} || ( time * 1000 );
     my $nonce_string = $params->{nonce}
         || String::Random->new->randpattern($nonce_string_mask);
 
