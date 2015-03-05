@@ -456,7 +456,10 @@ sub _request {
     if ( $res->is_success ) {
         return $res->content;
     }
-    $self->{error} = $res->status_line;
+    $self->{error} = {
+        status  => $res->status_line,
+        content => $res->content
+    };
     return;
 }
 
