@@ -449,6 +449,7 @@ sub _request {
     # add content if specified
     if ($content) {
         $req->content($content);
+        $req->header('Content-Type' => 'text/xml');
     }
 
     my $res = $self->{ua}->request($req);
