@@ -353,8 +353,7 @@ sub prices {
     if (@optional_param) {
         $url->query_form( \@optional_param );
     }
-    # optional auth, once working.
-    return $self->_request( { method => 'GET', url => $url } );
+    return $self->_request( { method => 'GET', url => $url, auth => 1 } );
 }
 
 sub reference {

@@ -38,3 +38,22 @@ else {
     say $api->error;
 }
 
+$resp = $api->prices;
+if ($resp) {
+    my $xml = XML::Twig->new( pretty_print => 'indented' );
+    $xml->parse($resp);
+    $xml->print;
+}
+else {
+    say $api->error->{status} . "\n" . $api->error->{content};
+}
+
+$resp = $api->orders;
+if ($resp) {
+    my $xml = XML::Twig->new( pretty_print => 'indented' );
+    $xml->parse($resp);
+    $xml->print;
+}
+else {
+    say $api->error;
+}

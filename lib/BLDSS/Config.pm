@@ -24,8 +24,8 @@ sub new {
     my ( $class, $keys ) = @_;
 
     my $self = {
-        api_key              => $keys->{api_key}              || "87-0656",
-        api_key_auth         => $keys->{api_key_auth}         || "APIDEV176",
+        api_key              => $keys->{api_key}              || "73-0013",
+        api_key_auth         => $keys->{api_key_auth}         || "API1394039",
         api_application      => $keys->{api_application}      || "BLAPI8IJdN",
         api_application_auth => $keys->{api_application_auth} || "m7eZz1CCu7",
     };
