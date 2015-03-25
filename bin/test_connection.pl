@@ -9,6 +9,8 @@ use XML::Twig;
 
 use BLDSS;
 
+use Data::Dump qw(dump);
+
 my $api = BLDSS->new();
 
 #my $resp = $api->simple_search('slovenia');
@@ -22,7 +24,7 @@ if ($resp) {
     $xml->print;
 }
 else {
-    say $api->error;
+    say dump $api->error;
 }
 
 my $uin = 'BLL01013337063';
@@ -35,7 +37,7 @@ if ($resp) {
     $xml->print;
 }
 else {
-    say $api->error;
+    say dump $api->error;
 }
 
 $resp = $api->prices;
@@ -45,7 +47,7 @@ if ($resp) {
     $xml->print;
 }
 else {
-    say $api->error->{status} . "\n" . $api->error->{content};
+    say dump $api->error;
 }
 
 $resp = $api->orders;
@@ -55,5 +57,34 @@ if ($resp) {
     $xml->print;
 }
 else {
-    say $api->error;
+    say dump $api->error;
+}
+
+$resp = $api->create_order( {
+    customerReference => 19,
+    Delivery => {
+        Address => {
+            AddressLine1     => "Jefferson Summit",
+            AddressLine2     => "",
+            AddressLine3     => "",
+            Country          => "",
+            CountyOrState    => "",
+            PostOrZipCode    => "",
+            ProvinceOrRegion => "",
+            TownOrCity       => "",
+        },
+        email   => "",
+    },
+    Item => { uin => "BLL01016905070" },
+    requestor => "Tommy Peters",
+    service => { format => 4, quality => 1, quantity => 1, service => 1, speed => 2 },
+    type => "A",
+} );
+if ($resp) {
+    my $xml = XML::Twig->new( pretty_print => 'indented' );
+    $xml->parse($resp);
+    $xml->print;
+}
+else {
+    say dump $api->error;
 }

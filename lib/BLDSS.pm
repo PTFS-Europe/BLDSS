@@ -482,7 +482,7 @@ sub _authentication_header {
       'request_time',     $t,
       'signature_method', 'HMAC-SHA1';
     if ($request_body) {
-        push @parameters, 'request', $request_body;
+        push @parameters, 'request', uri_escape($request_body);
     }
     my %p_hash = @parameters;
     @parameters = map { "$_=$p_hash{$_}" } keys %p_hash;
@@ -519,7 +519,7 @@ sub _encode_order {
 
     # Optional Parameters
     for my $name (
-        qw( requestor cusyomerReference payCopyright allowWaitingList referrel))
+        qw( requestor customerReference payCopyright allowWaitingList referrel))
     {
         if ( $ref->{$name} ) {
             $element = $doc->createElement($name);
