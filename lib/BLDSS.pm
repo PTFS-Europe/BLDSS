@@ -231,7 +231,10 @@ sub cancel_order {
     my ( $self, $orderline_ref ) = @_;
     my $url_string = $self->{api_url} . "/api/orders/$orderline_ref";
     my $url        = URI->new($url_string);
-    return $self->_request( { method => 'DELETE', url => $url, auth => 1 } );
+    my $additional = { id => $orderline_ref };
+    return $self->_request( {
+        method => 'DELETE', url => $url, additional => $additional, auth => 1
+    } );
 }
 
 sub create_order {
@@ -426,10 +429,11 @@ sub error {
 
 sub _request {
     my ( $self, $param ) = @_;
-    my $method  = $param->{method};
-    my $url     = $param->{url};
-    my $content = $param->{content};
-    my $auth    = $param->{auth};
+    my $method     = $param->{method};
+    my $url        = $param->{url};
+    my $content    = $param->{content};
+    my $additional = $param->{additional};
+    my $auth       = $param->{auth};
     if ( $self->{error} ) {    # clear an existing error
         delete $self->{error};
     }
@@ -438,10 +442,10 @@ sub _request {
 
     # If auth add as header
     if ( $auth ) {
-        my $authentication_request =
-            $self->_authentication_header(
-                { method => $method, uri => $url, request_body => $content }
-            );
+        my $authentication_request = $self->_authentication_header( {
+            method => $method, uri => $url,
+            request_body => $content, additional => $additional,
+        } );
         $req->header( 'BLDSS-API-Authentication' => $authentication_request );
     }
 
@@ -465,10 +469,11 @@ sub _request {
 sub _authentication_header {
     my ( $self, $params ) = @_;
     my $request_body = $params->{request_body};
+    my $additional   = $params->{additional};
     my $method       = $params->{method};
     my $uri          = $params->{uri};
     my $return       = $params->{return} || "";
-    my $t            = $params->{time} || ( time * 1000 );
+    my $t            = $params->{time}   || ( time * 1000 );
     my $nonce_string = $params->{nonce}
         || String::Random->new->randpattern($nonce_string_mask);
 
@@ -483,6 +488,11 @@ sub _authentication_header {
       'signature_method', 'HMAC-SHA1';
     if ($request_body) {
         push @parameters, 'request', uri_escape($request_body);
+    }
+    if ( $additional and ( 'HASH' eq ref $additional ) ) {
+        foreach ( my ( $k, $v ) = each %{$additional} ) {
+            push @parameters, $k, $v;
+        }
     }
     my %p_hash = @parameters;
     @parameters = map { "$_=$p_hash{$_}" } keys %p_hash;

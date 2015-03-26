@@ -125,7 +125,22 @@ my @sortedResult = sort { lc($a) cmp lc($b) } split(/,/, "api_application=BLAPI8
 
 is( @sortedHeader, @sortedResult, "_authentication_header, Complete Header" );
 
-
+# Delete request authorisation.
+my $order_ref = "60010498-001";
+is(
+    $api_obj->_authentication_header(
+        {
+            method     => "DELETE",
+            uri        => URI->new($api_obj->{api_url} . "/api/orders/$order_ref"),
+            return     => "request_string",
+            nonce      => "cAR5d2jDiTX6spi2",
+            time       => "1427374322000",
+            additional => { id => $order_ref },
+        }
+    ),
+    "DELETE&%2Fapi%2Forders%2F60010498-001&api_application%3DBLAPI8IJdN%26api_key%3D73-0013%26id%3D60010498-001%26nonce%3DcAR5d2jDiTX6spi2%26override_encoding_method%3Don%26request_time%3D1427374322000%26signature_method%3DHMAC-SHA1",
+    "_authentication_header request string, DELETE order"
+);
 
 # With Propagated Config
 my ( $api_key, $api_key_auth, $api_application, $api_application_auth )
