@@ -47,12 +47,15 @@ use BLDSS::Config;
 my $nonce_string_mask = 's' x 16;
 
 sub new {
-    my ( $class, $keys ) = @_;
+    my ( $class, $params ) = @_;
     my $self  = {
         api_url     => 'http://apitest.bldss.bl.uk',
         ua          => LWP::UserAgent->new,
-        config      => BLDSS::Config->new($keys),
+        config      => BLDSS::Config->new($params->{api_keys}),
     };
+
+    $self->{api_url} = $params->{api_url}
+        if ( $params->{api_url} );
 
     bless $self, $class;
     return $self;
