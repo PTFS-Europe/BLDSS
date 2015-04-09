@@ -44,8 +44,6 @@ use MIME::Base64;
 
 use BLDSS::Config;
 
-my $nonce_string_mask = 's' x 16;
-
 sub new {
     my ( $class, $params ) = @_;
     my $self  = {
@@ -477,8 +475,11 @@ sub _authentication_header {
     my $uri          = $params->{uri};
     my $return       = $params->{return} || "";
     my $t            = $params->{time}   || ( time * 1000 );
-    my $nonce_string = $params->{nonce}
-        || String::Random->new->randpattern($nonce_string_mask);
+    # BLDSS API seems to have problems with '/' in the nonce, so we must
+    # create our own 'Salt' character set.
+    my $gen = String::Random->new;
+    $gen->{'S'} = [ 'A'..'Z', 'a'..'z', '0'..'9', '.' ];
+    my $nonce_string = $params->{nonce} || $gen->randpattern('S' x 16);
 
     my $path         = $uri->path;
     my @parameters   = $uri->query_form;
