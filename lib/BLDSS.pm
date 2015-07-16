@@ -185,7 +185,7 @@ sub availability {
     my $url_string = $self->{api_url} . '/api/availability';
     my $url        = URI->new($url_string);
     $url->query_form( \@param );
-    return $self->_request( { method => 'GET', url => $url } );
+    return $self->_request( { method => 'GET', url => $url, auth => 1 } );
 }
 
 sub approvals {
