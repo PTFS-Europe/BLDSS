@@ -378,17 +378,14 @@ sub reference {
     if ( !exists $valid_reference_calls{$reference_type} ) {
         return;
     }
-    # reference lookups are returning 404
-    return;
-    #ZZ
-    my $url_string = $self->{api_url} . "/reference/$reference_type";
+    my $url_string = $self->{api_url} . "/api/reference/$reference_type";
     my $url        = URI->new($url_string);
     return $self->_request( { method => 'GET', url => $url } );
 }
 
 sub rejected_requests {
     my ( $self, $options ) = @_;
-    my $url_string = $self->{api_url} . '/reference/rejectedRequests';
+    my $url_string = $self->{api_url} . '/api/reference/rejectedRequests';
     my $url        = URI->new($url_string);
     my @opt;
     if ( exists $options->{start} ) {
@@ -406,7 +403,7 @@ sub rejected_requests {
 
 sub estimated_despatch_date {
     my ( $self, $options ) = @_;
-    my $url_string = $self->{api_url} . '/utility/estimatedDespatch';
+    my $url_string = $self->{api_url} . '/api/utility/estimatedDespatch';
     my $url        = URI->new($url_string);
     my @opt;
     if ( exists $options->{availability_date} ) {
